@@ -10,7 +10,7 @@
 import { NextRequest } from 'next/server';
 import { v4 as uuidv4 } from 'uuid';
 import { createServerClient } from '@/lib/supabase/client';
-import { generateStructuredResponse, MODEL_CONFIG } from '@/lib/anthropic/client';
+import { generateStructuredResponse, MODEL_CONFIG } from '@/lib/llm-router/client';
 import {
   PLAN_GENERATION_PROMPT,
   buildUserContext,

@@ -16,7 +16,7 @@ import { NextRequest } from 'next/server';
 import { z } from 'zod';
 import { v4 as uuidv4 } from 'uuid';
 import { createServerClient } from '@/lib/supabase/client';
-import { generateCompletion, MODEL_CONFIG } from '@/lib/anthropic/client';
+import { generateCompletion, MODEL_CONFIG } from '@/lib/llm-router/client';
 import { CHAT_PROMPT, buildUserContext } from '@/prompts/training-methodology';
 import {
   requireAuth,

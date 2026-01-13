@@ -1,8 +1,58 @@
 # Summit - AI Training Plans for Mountain Athletes
 
-## Current Status: Frontend Complete ✅
+## Current Status: LLM Router Integration Complete ✅
 
-Both backend and frontend are implemented. Ready for integration testing.
+Both backend and frontend are implemented. LLM calls now route through `llm_router` service instead of direct Anthropic API.
+
+---
+
+## LLM Router Integration
+
+### Architecture Change
+
+Summit now uses `llm_router` service to handle AI completions instead of direct Anthropic SDK calls.
+
+```
+┌─────────────────┐     HTTP POST      ┌─────────────────┐     API Calls    ┌─────────────────┐
+│     Summit      │ ──────────────────▶│   llm_router    │ ───────────────▶│  Claude/Gemini  │
+│  (Next.js API)  │  /api/query        │   (FastAPI)     │                  │   (LLM APIs)    │
+└─────────────────┘                    └─────────────────┘                  └─────────────────┘
+```
+
+### Benefits
+- **Provider abstraction**: Switch between Claude and Gemini without code changes
+- **Centralized configuration**: LLM settings managed in one place
+- **Context loading**: Can load context from files, JSON, or SQLite
+- **Reusable**: Other projects can use the same llm_router instance
+
+### Files Changed
+| File | Change |
+|------|--------|
+| `src/lib/llm-router/client.ts` | New client for llm_router HTTP API |
+| `src/app/api/chat/route.ts` | Import from llm-router instead of anthropic |
+| `src/app/api/plans/generate/route.ts` | Import from llm-router instead of anthropic |
+| `.env.local` | Added `LLM_ROUTER_URL`, `DEFAULT_LLM`; removed `ANTHROPIC_API_KEY` |
+| `.env.example` | Updated with llm_router config |
+
+### Running with LLM Router
+
+```bash
+# Terminal 1: Start llm_router service
+cd ~/code/llm_router
+python main.py  # Runs on http://localhost:8000
+
+# Terminal 2: Start Summit
+cd ~/code/summit
+npm run dev
+```
+
+### Environment Variables
+
+```bash
+# Required for AI features
+LLM_ROUTER_URL=http://localhost:8000
+DEFAULT_LLM=claude  # or "gemini"
+```
 
 ---
 
@@ -146,11 +196,17 @@ Both backend and frontend are implemented. Ready for integration testing.
 NEXT_PUBLIC_SUPABASE_URL=
 NEXT_PUBLIC_SUPABASE_ANON_KEY=
 SUPABASE_SERVICE_ROLE_KEY=
-ANTHROPIC_API_KEY=
+
+# LLM Router (replaces ANTHROPIC_API_KEY)
+LLM_ROUTER_URL=http://localhost:8000
+DEFAULT_LLM=claude
+
+# Stripe (Payments)
 STRIPE_SECRET_KEY=
 STRIPE_PUBLISHABLE_KEY=
 STRIPE_WEBHOOK_SECRET=
 STRIPE_MONTHLY_PRICE_ID=
+
 NEXT_PUBLIC_APP_URL=
 ```
 
@@ -162,6 +218,9 @@ npm install
 
 # Start Supabase (requires Docker)
 supabase start
+
+# Start llm_router service (separate terminal)
+cd ~/code/llm_router && python main.py
 
 # Start dev server
 npm run dev
@@ -184,6 +243,7 @@ stripe listen --forward-to localhost:3000/api/webhooks/stripe
 - `src/app/onboarding/*` - Onboarding flow
 
 ### Key Backend Files
+- `src/lib/llm-router/client.ts` - LLM Router HTTP client
 - `src/prompts/training-methodology.ts` - Training science knowledge
 - `src/app/api/plans/generate/route.ts` - Plan generation
 - `src/app/api/chat/route.ts` - AI coach interface
