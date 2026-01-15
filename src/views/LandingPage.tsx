@@ -1,0 +1,145 @@
+
+import React from 'react';
+import { Link } from 'react-router-dom';
+import { ArrowRight, Mountain, Wind, Flame, CheckCircle2 } from 'lucide-react';
+import { Button } from '../components/Button';
+
+export const LandingPage: React.FC = () => {
+  return (
+    <div className="bg-[#1a1a1a] selection:bg-amber-600/30">
+      {/* Navigation */}
+      <nav className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-6 md:px-12 h-24 bg-gradient-to-b from-[#1a1a1a] to-transparent">
+        <div className="flex items-center gap-2">
+          <div className="w-8 h-8 bg-[#d97706] rounded flex items-center justify-center font-bold text-black italic">S</div>
+          <span className="text-xl font-bold tracking-tighter">SUMMIT</span>
+        </div>
+        <div className="hidden md:flex items-center gap-10">
+          <a href="#how" className="text-sm font-medium text-[#737373] hover:text-[#f5f2ed] transition-colors">How it works</a>
+          <a href="#pricing" className="text-sm font-medium text-[#737373] hover:text-[#f5f2ed] transition-colors">Pricing</a>
+          <Link to="/onboarding">
+            <Button variant="ghost" size="sm">Log In</Button>
+          </Link>
+          <Link to="/onboarding">
+            <Button size="sm">Start Free</Button>
+          </Link>
+        </div>
+      </nav>
+
+      {/* Hero Section */}
+      <section className="relative min-h-screen flex items-center justify-center overflow-hidden">
+        <div className="absolute inset-0 z-0">
+          <img 
+            src="https://images.unsplash.com/photo-1522163182402-834f871fd851?auto=format&fit=crop&q=80&w=2000" 
+            alt="Alpinist on a ridge" 
+            className="w-full h-full object-cover opacity-40 animate-kenburns"
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-[#1a1a1a] via-[#1a1a1a]/20 to-transparent" />
+        </div>
+
+        <div className="relative z-10 text-center px-6 max-w-4xl mx-auto">
+          <h1 className="text-6xl md:text-8xl font-serif mb-6 leading-[1.1]">
+            Train with <span className="italic text-amber-500">intention</span>.<br />
+            Climb with confidence.
+          </h1>
+          <p className="text-lg md:text-xl text-[#f5f2ed]/70 mb-10 max-w-2xl mx-auto leading-relaxed">
+            AI-powered training plans for mountain athletes. 
+            Adapts to your life, your data, and your wildest objectives.
+          </p>
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+            <Link to="/onboarding">
+              <Button size="lg" className="w-full sm:w-auto">Start Free Trial</Button>
+            </Link>
+            <Button variant="ghost" size="lg" className="w-full sm:w-auto border border-white/10">
+              See How It Works
+            </Button>
+          </div>
+        </div>
+      </section>
+
+      {/* Social Proof */}
+      <section className="py-20 border-y border-white/5 bg-[#1a1a1a]">
+        <div className="container mx-auto px-6 text-center">
+          <p className="text-xs font-bold uppercase tracking-[0.3em] text-[#737373] mb-12">Trusted by athletes from</p>
+          <div className="flex flex-wrap justify-center items-center gap-12 md:gap-24 opacity-30 grayscale">
+            <img src="https://upload.wikimedia.org/wikipedia/commons/3/36/The_North_Face_logo.svg" alt="TNF" className="h-8 invert" />
+            <img src="https://upload.wikimedia.org/wikipedia/commons/a/ab/Patagonia_logo.svg" alt="Patagonia" className="h-10 invert" />
+            <img src="https://upload.wikimedia.org/wikipedia/commons/c/c2/Arc%27teryx_Logo.svg" alt="Arcteryx" className="h-6 invert" />
+          </div>
+        </div>
+      </section>
+
+      {/* How it Works */}
+      <section id="how" className="py-32 container mx-auto px-6">
+        <div className="grid md:grid-cols-3 gap-16">
+          <div className="space-y-6">
+            <div className="w-12 h-12 bg-amber-600/10 rounded-xl flex items-center justify-center text-amber-500">
+              <Mountain size={24} />
+            </div>
+            <h3 className="text-2xl font-serif">Define the Objective</h3>
+            <p className="text-[#737373] leading-relaxed">
+              Tell us what you're training for — a grade, a peak, or a time. We build a custom periodized plan based on your unique physiology.
+            </p>
+          </div>
+          <div className="space-y-6">
+            <div className="w-12 h-12 bg-amber-600/10 rounded-xl flex items-center justify-center text-amber-500">
+              <Wind size={24} />
+            </div>
+            <h3 className="text-2xl font-serif">Sync Your Gear</h3>
+            <p className="text-[#737373] leading-relaxed">
+              Connect Garmin, Coros, or Apple Watch. Summit tracks your HRV and sleep to adjust your intensity in real-time.
+            </p>
+          </div>
+          <div className="space-y-6">
+            <div className="w-12 h-12 bg-amber-600/10 rounded-xl flex items-center justify-center text-amber-500">
+              <Flame size={24} />
+            </div>
+            <h3 className="text-2xl font-serif">Execute with a Coach</h3>
+            <p className="text-[#737373] leading-relaxed">
+              Confused by a workout? Feeling a tweak? Talk to our AI coach 24/7 to get professional guidance on your training.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      {/* Pricing */}
+      <section id="pricing" className="py-32 bg-[#262626]/30 border-y border-white/5">
+        <div className="container mx-auto px-6 max-w-2xl text-center">
+          <h2 className="text-4xl font-serif mb-6 text-amber-500 italic">One simple plan.</h2>
+          <p className="text-lg text-[#737373] mb-12">A elite-level coach in your pocket for less than a gym day pass.</p>
+          
+          <div className="bg-[#1a1a1a] p-10 rounded-2xl border border-amber-600/20 shadow-2xl">
+            <div className="text-6xl font-serif mb-2">$10<span className="text-xl text-[#737373] font-sans">/mo</span></div>
+            <p className="text-sm font-bold tracking-widest text-[#737373] mb-8 uppercase">Cancel Anytime</p>
+            <ul className="space-y-4 mb-10 text-left max-w-xs mx-auto">
+              {['Full AI Coaching', 'Unlimited Custom Plans', 'Wearable Integration', 'Progress Visualization'].map(f => (
+                <li key={f} className="flex items-center gap-3 text-sm">
+                  <CheckCircle2 size={18} className="text-amber-500" />
+                  {f}
+                </li>
+              ))}
+            </ul>
+            <Link to="/onboarding">
+              <Button fullWidth size="lg">Start Free Trial</Button>
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      {/* Footer */}
+      <footer className="py-20 border-t border-white/5">
+        <div className="container mx-auto px-6 flex flex-col md:flex-row justify-between items-center gap-8">
+          <div className="flex items-center gap-2">
+            <div className="w-6 h-6 bg-[#d97706] rounded flex items-center justify-center font-bold text-black italic text-xs">S</div>
+            <span className="text-sm font-bold tracking-tighter">SUMMIT</span>
+          </div>
+          <div className="flex gap-8 text-xs font-medium text-[#737373]">
+            <a href="#" className="hover:text-[#f5f2ed]">Terms</a>
+            <a href="#" className="hover:text-[#f5f2ed]">Privacy</a>
+            <a href="#" className="hover:text-[#f5f2ed]">Support</a>
+          </div>
+          <p className="text-xs text-[#737373]">© 2024 Summit Training. For those who go high.</p>
+        </div>
+      </footer>
+    </div>
+  );
+};
