@@ -1,10 +1,27 @@
 
-import React from 'react';
-import { Link } from 'react-router-dom';
-import { ArrowRight, Mountain, Wind, Flame, CheckCircle2 } from 'lucide-react';
+import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { Mountain, Wind, Flame, CheckCircle2, X } from 'lucide-react';
 import { Button } from '../components/Button';
+import { useAuth } from '../contexts/AuthContext';
 
 export const LandingPage: React.FC = () => {
+  const [showSignupModal, setShowSignupModal] = useState(false);
+  const [email, setEmail] = useState('');
+  const { signUp } = useAuth();
+  const navigate = useNavigate();
+
+  const handleSignUp = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (email.trim()) {
+      signUp(email.trim());
+      navigate('/onboarding');
+    }
+  };
+
+  const openSignup = () => setShowSignupModal(true);
+  const closeSignup = () => setShowSignupModal(false);
+
   return (
     <div className="bg-[#1a1a1a] selection:bg-amber-600/30">
       {/* Navigation */}
@@ -16,12 +33,8 @@ export const LandingPage: React.FC = () => {
         <div className="hidden md:flex items-center gap-10">
           <a href="#how" className="text-sm font-medium text-[#737373] hover:text-[#f5f2ed] transition-colors">How it works</a>
           <a href="#pricing" className="text-sm font-medium text-[#737373] hover:text-[#f5f2ed] transition-colors">Pricing</a>
-          <Link to="/onboarding">
-            <Button variant="ghost" size="sm">Log In</Button>
-          </Link>
-          <Link to="/onboarding">
-            <Button size="sm">Start Free</Button>
-          </Link>
+          <Button variant="ghost" size="sm" onClick={openSignup}>Log In</Button>
+          <Button size="sm" onClick={openSignup}>Start Free</Button>
         </div>
       </nav>
 
@@ -46,12 +59,14 @@ export const LandingPage: React.FC = () => {
             Adapts to your life, your data, and your wildest objectives.
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-            <Link to="/onboarding">
-              <Button size="lg" className="w-full sm:w-auto">Start Free Trial</Button>
-            </Link>
-            <Button variant="ghost" size="lg" className="w-full sm:w-auto border border-white/10">
-              See How It Works
+            <Button size="lg" className="w-full sm:w-auto" onClick={openSignup}>
+              Start Free Trial
             </Button>
+            <a href="#how">
+              <Button variant="ghost" size="lg" className="w-full sm:w-auto border border-white/10">
+                See How It Works
+              </Button>
+            </a>
           </div>
         </div>
       </section>
@@ -118,9 +133,9 @@ export const LandingPage: React.FC = () => {
                 </li>
               ))}
             </ul>
-            <Link to="/onboarding">
-              <Button fullWidth size="lg">Start Free Trial</Button>
-            </Link>
+            <Button fullWidth size="lg" onClick={openSignup}>
+              Start Free Trial
+            </Button>
           </div>
         </div>
       </section>
@@ -140,6 +155,52 @@ export const LandingPage: React.FC = () => {
           <p className="text-xs text-[#737373]">© 2024 Summit Training. For those who go high.</p>
         </div>
       </footer>
+
+      {/* Signup Modal */}
+      {showSignupModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={closeSignup} />
+          <div className="relative bg-[#1a1a1a] border border-white/10 rounded-2xl p-8 w-full max-w-md animate-in fade-in zoom-in-95 duration-200">
+            <button
+              onClick={closeSignup}
+              className="absolute top-4 right-4 text-[#737373] hover:text-white transition-colors"
+            >
+              <X size={20} />
+            </button>
+
+            <div className="text-center mb-8">
+              <div className="w-12 h-12 bg-[#d97706] rounded-xl flex items-center justify-center font-bold text-black italic text-xl mx-auto mb-4">
+                S
+              </div>
+              <h2 className="text-2xl font-serif italic">Start your journey</h2>
+              <p className="text-sm text-[#737373] mt-2">14-day free trial. No credit card required.</p>
+            </div>
+
+            <form onSubmit={handleSignUp} className="space-y-4">
+              <div>
+                <label className="text-xs font-bold uppercase tracking-widest text-[#737373] block mb-2">
+                  Email
+                </label>
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="athlete@example.com"
+                  required
+                  className="w-full bg-white/5 p-4 rounded-xl border border-white/10 focus:outline-none focus:border-amber-600 transition-colors"
+                />
+              </div>
+              <Button type="submit" fullWidth size="lg">
+                Continue
+              </Button>
+            </form>
+
+            <p className="text-xs text-[#525252] text-center mt-6">
+              By continuing, you agree to our Terms and Privacy Policy.
+            </p>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

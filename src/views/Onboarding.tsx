@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { ChevronRight, ArrowLeft, Mountain, Footprints, SkipForward, Snowflake } from 'lucide-react';
 import { Button } from '../components/Button';
 import { Sport, ExperienceLevel } from '../types';
+import { useAuth } from '../contexts/AuthContext';
 
 const STEPS = [
   'Sports',
@@ -58,6 +59,7 @@ export const Onboarding: React.FC = () => {
     hoursPerWeek: 8,
   });
   const navigate = useNavigate();
+  const { completeOnboarding } = useAuth();
 
   const updateData = <K extends keyof OnboardingData>(key: K, value: OnboardingData[K]) => {
     setData(prev => ({ ...prev, [key]: value }));
@@ -97,13 +99,25 @@ export const Onboarding: React.FC = () => {
   useEffect(() => {
     if (step === 5) {
       const timer = setTimeout(() => {
-        // In a real app, we'd save the data here
-        console.log('Onboarding data:', data);
+        // Save the onboarding data and mark as complete
+        completeOnboarding({
+          sports: data.sports,
+          heightCm: parseInt(data.heightCm) || 0,
+          weightKg: parseInt(data.weightKg) || 0,
+          age: parseInt(data.age) || 0,
+          experienceLevel: data.experienceLevel || 'Beginner',
+          yearsTraining: parseInt(data.yearsTraining) || 0,
+          athleticHistory: data.athleticHistory,
+          primaryGoal: data.primaryGoal,
+          targetDate: data.targetDate,
+          daysPerWeek: data.daysPerWeek,
+          hoursPerWeek: data.hoursPerWeek,
+        });
         navigate('/');
       }, 3500);
       return () => clearTimeout(timer);
     }
-  }, [step, navigate, data]);
+  }, [step, navigate, data, completeOnboarding]);
 
   const renderStep = () => {
     switch (step) {
