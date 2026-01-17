@@ -10,6 +10,7 @@ import { PlanReview } from './views/PlanReview';
 import { Dashboard } from './views/Dashboard';
 import { ChatView } from './views/ChatView';
 import { ProgressView } from './views/ProgressView';
+import { DevLogin } from './views/DevLogin';
 
 // Simple placeholder views
 const PlanPlaceholder = () => (
@@ -225,6 +226,9 @@ const AppRoutes: React.FC = () => {
           </ProtectedRoute>
         }
       />
+
+      {/* Dev login - bypasses onboarding for testing */}
+      <Route path="/dev" element={<DevLogin />} />
 
       {/* Default redirect */}
       <Route path="*" element={<Navigate to="/landing" replace />} />

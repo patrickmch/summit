@@ -481,6 +481,7 @@ function calculateWeeksUntilTarget(targetDate?: string): number {
 function getMockStructuredPlan(profile: Partial<UserProfile>): StructuredPlan {
   const totalWeeks = calculateWeeksUntilTarget(profile.targetDate);
   const daysPerWeek = profile.daysPerWeek || 4;
+  const maxHoursPerWeek = profile.hoursPerWeek || 10; // This is MAX capacity, not constant
 
   // Calculate phase boundaries based on total weeks
   // Base: ~50%, Build: ~35%, Peak: ~15%
@@ -493,6 +494,42 @@ function getMockStructuredPlan(profile: Partial<UserProfile>): StructuredPlan {
     { name: 'Build', weekStart: baseEnd + 1, weekEnd: buildEnd, focus: 'Increasing intensity and sport-specific work' },
     { name: 'Peak', weekStart: peakStart, weekEnd: totalWeeks, focus: 'Race-specific preparation and taper' },
   ];
+
+  /**
+   * Calculate target hours for a given week based on periodization principles.
+   * Hours ramp up progressively, not flat from day 1.
+   *
+   * Base phase: Start at 50%, build to 70% of max
+   * Build phase: 70% to 90% of max
+   * Peak phase: 85% of max, then taper to 50% in final week(s)
+   */
+  const calculateTargetHours = (weekNum: number, phase: Phase): number => {
+    const phaseWeekNum = weekNum - phase.weekStart + 1;
+    const phaseLength = phase.weekEnd - phase.weekStart + 1;
+    const progressInPhase = phaseLength > 1 ? (phaseWeekNum - 1) / (phaseLength - 1) : 0;
+
+    if (phase.name === 'Base Building') {
+      // Ramp from 50% to 70% of max
+      const startPct = 0.5;
+      const endPct = 0.7;
+      return Math.round(maxHoursPerWeek * (startPct + progressInPhase * (endPct - startPct)) * 10) / 10;
+    } else if (phase.name === 'Build') {
+      // Ramp from 70% to 90% of max
+      const startPct = 0.7;
+      const endPct = 0.9;
+      return Math.round(maxHoursPerWeek * (startPct + progressInPhase * (endPct - startPct)) * 10) / 10;
+    } else {
+      // Peak phase: 85% then taper
+      // Last 1-2 weeks are taper (50-60%)
+      const weeksUntilEnd = phase.weekEnd - weekNum;
+      if (weeksUntilEnd === 0) {
+        return Math.round(maxHoursPerWeek * 0.5 * 10) / 10; // Final week taper
+      } else if (weeksUntilEnd === 1 && phaseLength > 2) {
+        return Math.round(maxHoursPerWeek * 0.65 * 10) / 10; // Pre-taper
+      }
+      return Math.round(maxHoursPerWeek * 0.85 * 10) / 10;
+    }
+  };
 
   const workoutTemplates: { type: WorkoutType; title: string; intensity: Intensity; durationMin: number; blocks: WorkoutBlock[] }[] = [
     {
@@ -601,44 +638,58 @@ function getMockStructuredPlan(profile: Partial<UserProfile>): StructuredPlan {
 
   for (let week = 1; week <= totalWeeks; week++) {
     const phase = phases.find(p => week >= p.weekStart && week <= p.weekEnd)!;
+    const targetHours = calculateTargetHours(week, phase);
+    const targetMinutes = targetHours * 60;
     const workouts: PlannedWorkout[] = [];
 
+    // Calculate base durations from templates, then scale to fit target hours
+    const baseTemplates = weeklySchedule.map((day, idx) => {
+      // Weekend long session
+      if (day === 6 && idx === weeklySchedule.length - 1) {
+        return workoutTemplates.find(t => t.title === 'Long Aerobic')!;
+      }
+      return workoutTemplates[idx % workoutTemplates.length];
+    });
+
+    const baseTotalMinutes = baseTemplates.reduce((sum, t) => sum + t.durationMin, 0);
+    const scaleFactor = targetMinutes / baseTotalMinutes;
+
     weeklySchedule.forEach((day, idx) => {
-      // Vary workout types through the week
-      const templateIdx = idx % workoutTemplates.length;
-      const template = workoutTemplates[templateIdx];
+      const template = baseTemplates[idx];
+
+      // Scale duration based on target hours (min 20 min, max 180 min)
+      const scaledDuration = Math.max(20, Math.min(180, Math.round(template.durationMin * scaleFactor)));
 
       // Increase intensity in later phases
       let intensity = template.intensity;
       if (phase.name === 'Build' && template.intensity === 'Low') {
         intensity = 'Moderate';
       }
-
-      // Weekend long run
-      if (day === 6 && idx === weeklySchedule.length - 1) {
-        const longTemplate = workoutTemplates.find(t => t.title === 'Long Aerobic')!;
-        workouts.push({
-          id: generateWorkoutId(week, day),
-          dayOfWeek: day,
-          title: longTemplate.title,
-          type: longTemplate.type,
-          duration: `${longTemplate.durationMin} min`,
-          durationMinutes: longTemplate.durationMin,
-          intensity: longTemplate.intensity,
-          blocks: longTemplate.blocks,
-        });
-      } else {
-        workouts.push({
-          id: generateWorkoutId(week, day),
-          dayOfWeek: day,
-          title: template.title,
-          type: template.type,
-          duration: `${template.durationMin} min`,
-          durationMinutes: template.durationMin,
-          intensity,
-          blocks: template.blocks,
-        });
+      if (phase.name === 'Peak' && template.intensity === 'Moderate') {
+        intensity = 'High';
       }
+
+      // Scale block durations proportionally
+      const blockScale = scaledDuration / template.durationMin;
+      const scaledBlocks = template.blocks.map(block => {
+        const blockMinutes = parseInt(block.duration) || 10;
+        const newMinutes = Math.max(5, Math.round(blockMinutes * blockScale));
+        return {
+          ...block,
+          duration: `${newMinutes} min`,
+        };
+      });
+
+      workouts.push({
+        id: generateWorkoutId(week, day),
+        dayOfWeek: day,
+        title: template.title,
+        type: template.type,
+        duration: `${scaledDuration} min`,
+        durationMinutes: scaledDuration,
+        intensity,
+        blocks: scaledBlocks,
+      });
     });
 
     // Determine theme based on phase
@@ -655,6 +706,7 @@ function getMockStructuredPlan(profile: Partial<UserProfile>): StructuredPlan {
       weekNumber: week,
       phase: phase.name,
       theme,
+      targetHours,
       workouts,
       coachNote: getCoachNote(week, phase),
     });
@@ -665,6 +717,16 @@ function getMockStructuredPlan(profile: Partial<UserProfile>): StructuredPlan {
       ? `Week ${phase.weekStart}`
       : `Weeks ${phase.weekStart}-${phase.weekEnd}`;
 
+  // Calculate hour ranges for each phase
+  const getPhaseHourRange = (phase: Phase): string => {
+    const startHours = calculateTargetHours(phase.weekStart, phase);
+    const endHours = calculateTargetHours(phase.weekEnd, phase);
+    if (Math.abs(startHours - endHours) < 0.5) {
+      return `~${startHours}`;
+    }
+    return `${startHours}→${endHours}`;
+  };
+
   const markdownSummary = `## Training Plan Overview
 
 ${profile.primaryGoal ? `**Goal:** ${profile.primaryGoal}` : ''}
@@ -672,16 +734,26 @@ ${profile.targetDate ? `**Target Date:** ${profile.targetDate}` : ''}
 
 This is a periodized ${totalWeeks}-week training program designed to progressively build your fitness while managing fatigue and maximizing adaptation.
 
+## Volume Progression
+
+Your max capacity is **${maxHoursPerWeek} hours/week**. The plan ramps up progressively:
+
+| Phase | Weeks | Hours/Week |
+|-------|-------|------------|
+| Base Building | ${formatPhaseWeeks(phases[0])} | ${getPhaseHourRange(phases[0])} hrs |
+| Build | ${formatPhaseWeeks(phases[1])} | ${getPhaseHourRange(phases[1])} hrs |
+| Peak & Taper | ${formatPhaseWeeks(phases[2])} | ${getPhaseHourRange(phases[2])} hrs |
+
 ## Training Phases
 
 ### Phase 1: Base Building (${formatPhaseWeeks(phases[0])})
-Focus on aerobic development, movement quality, and injury prevention. Build the foundation for harder work ahead.
+Focus on aerobic development, movement quality, and injury prevention. Start conservative and build consistency.
 
 ### Phase 2: Build (${formatPhaseWeeks(phases[1])})
 Increase training load and introduce more intensity. Sport-specific work becomes more prominent.
 
-### Phase 3: Peak (${formatPhaseWeeks(phases[2])})
-Fine-tune fitness and prepare for your goal. Reduce volume while maintaining intensity.
+### Phase 3: Peak & Taper (${formatPhaseWeeks(phases[2])})
+Fine-tune fitness, then reduce volume while maintaining intensity for your goal.
 
 ## Weekly Structure
 
@@ -692,10 +764,10 @@ Fine-tune fitness and prepare for your goal. Reduce volume while maintaining int
 
 ## Key Principles
 
-- **Progressive overload:** Gradual increase in training stress
-- **Specificity:** Training that matches your goal demands
+- **Progressive overload:** Hours ramp up week over week, not flat
+- **Specificity:** Training matches your goal demands
 - **Recovery:** Adequate rest for adaptation
-- **Consistency:** Showing up matters more than perfection
+- **Taper:** Reduce volume before your goal, maintain intensity
 
 ---
 

@@ -83,6 +83,7 @@ export interface WeekPlan {
   weekNumber: number;
   phase: string;
   theme: string;
+  targetHours: number; // Target training hours for this week
   workouts: PlannedWorkout[];
   coachNote?: string;
 }

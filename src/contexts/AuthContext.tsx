@@ -21,6 +21,7 @@ interface AuthContextType extends AuthState {
   signOut: () => void;
   completeOnboarding: (profile: Partial<UserProfile>) => void;
   acceptPlan: (plan: TrainingPlan) => void;
+  devLogin: () => void; // Skip straight to plan review with test profile
 }
 
 const AUTH_STORAGE_KEY = 'summit_auth';
@@ -31,6 +32,30 @@ const defaultState: AuthState = {
   hasAcceptedPlan: false,
   user: null,
   currentPlan: null,
+};
+
+// Dev seed profile for rapid testing
+const DEV_PROFILE: Partial<UserProfile> = {
+  name: 'Dev User',
+  email: 'dev@summit.coach',
+  // Physical - 6'7", 230 lbs
+  heightCm: 201,
+  weightKg: 104,
+  age: 32,
+  // Sports & Experience
+  sports: ['Alpine Climbing'],
+  experienceLevel: 'Advanced',
+  athleticHistory: '3-4 years of formal athletic training with a long history of climbing and mountaineering. Looking to lose some weight to make climbing easier while maintaining overall fitness.',
+  yearsTraining: 4,
+  // Goals
+  primaryGoal: 'Solo aid climb of El Capitan in November 2026. Secondary goals: improve general climbing fitness, backcountry skiing this spring, and summer alpine objectives.',
+  targetDate: '2026-11-01',
+  // Schedule
+  daysPerWeek: 5,
+  hoursPerWeek: 12,
+  // Equipment
+  equipment: ['Home gym', 'Climbing gear', 'Ski touring setup'],
+  watchConnected: false,
 };
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -95,6 +120,17 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }));
   };
 
+  // Dev login: skip onboarding with pre-filled profile, go to plan review
+  const devLogin = () => {
+    setState({
+      isAuthenticated: true,
+      hasCompletedOnboarding: true,
+      hasAcceptedPlan: false, // Go to plan review, not dashboard
+      user: DEV_PROFILE,
+      currentPlan: null,
+    });
+  };
+
   return (
     <AuthContext.Provider
       value={{
@@ -104,6 +140,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         signOut,
         completeOnboarding,
         acceptPlan,
+        devLogin,
       }}
     >
       {children}
