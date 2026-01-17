@@ -1,8 +1,8 @@
 # Summit | Train with Intention
 
-## Current Status: Vite + React SPA
+## Current Status: Vite + React SPA + Summit-AI Backend
 
-New frontend using Vite + React 19 + Google Gemini AI.
+Frontend using Vite + React 19, connected to summit-ai for RAG-enhanced coaching.
 
 ---
 
@@ -13,9 +13,17 @@ New frontend using Vite + React 19 + Google Gemini AI.
 │                    Vite + React SPA                     │
 ├─────────────────────────────────────────────────────────┤
 │  Views: Landing → Onboarding → Dashboard/Chat/Progress  │
-│  AI: Google Gemini (client-side)                        │
 │  Styling: Tailwind CSS + Inter/Playfair fonts           │
 │  Routing: React Router (HashRouter)                     │
+└───────────────────────────┬─────────────────────────────┘
+                            │ POST /api/query
+                            ▼
+┌─────────────────────────────────────────────────────────┐
+│                  Summit-AI (FastAPI)                    │
+├─────────────────────────────────────────────────────────┤
+│  RAG: pgvector semantic search over training docs       │
+│  LLM: Routes to Claude or Gemini                        │
+│  Embeddings: OpenAI text-embedding-3-small              │
 └─────────────────────────────────────────────────────────┘
 ```
 
@@ -36,7 +44,7 @@ summit/
 │   │   ├── ChatView.tsx
 │   │   └── ProgressView.tsx
 │   ├── services/
-│   │   └── geminiService.ts
+│   │   └── summitAiService.ts  # Calls summit-ai backend
 │   ├── App.tsx          # Router + Layout
 │   ├── index.tsx        # Entry point
 │   ├── index.css        # Tailwind + custom styles
@@ -67,7 +75,7 @@ summit/
 - **React 19** - UI framework
 - **Vite 6** - Build tool
 - **React Router 7** - Client-side routing
-- **Google Gemini** - AI chat (via @google/genai)
+- **Summit-AI** - RAG-enhanced coaching (Claude/Gemini via FastAPI)
 - **Recharts** - Data visualization
 - **Lucide React** - Icons
 - **Tailwind CSS 3** - Styling
@@ -76,16 +84,19 @@ summit/
 
 ```bash
 # .env.local
-GEMINI_API_KEY=your_gemini_api_key
+VITE_SUMMIT_AI_URL=http://localhost:8000  # or Railway URL
 ```
 
 ## Running Locally
 
 ```bash
-# Install dependencies
+# 1. Start summit-ai backend (in separate terminal)
+cd ~/code/summit-ai && python -m uvicorn main:app --reload
+
+# 2. Install dependencies
 npm install
 
-# Start dev server
+# 3. Start dev server
 npm run dev
 
 # Build for production
@@ -114,10 +125,19 @@ npm run build
 - `supabase/` - Database migrations and config
 - `public/` - Static assets
 
+## What's Done
+
+- [x] Vite + React SPA frontend
+- [x] Authentication flow (signup + protected routes)
+- [x] Onboarding flow (6 steps)
+- [x] Dashboard with today's workout (mock data)
+- [x] AI coach chat via summit-ai (RAG-enhanced)
+- [x] Progress visualization
+
 ## What's Next
 
-- [ ] Connect to Supabase for auth and data
-- [ ] Implement real workout data from database
-- [ ] Add user authentication flow
+- [ ] Connect to Supabase for real auth and data persistence
+- [ ] Replace mock workout data with database queries
 - [ ] Build out Plan calendar view
 - [ ] Add workout logging functionality
+- [ ] Deploy summit-ai to Railway

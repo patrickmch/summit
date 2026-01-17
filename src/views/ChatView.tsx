@@ -2,7 +2,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Send, Sparkles, MessageSquare, Info } from 'lucide-react';
 import { ChatMessage } from '../types';
-import { getCoachResponse } from '../services/geminiService';
+import { getCoachResponse } from '../services/summitAiService';
 
 export const ChatView: React.FC = () => {
   const [messages, setMessages] = useState<ChatMessage[]>([
@@ -38,17 +38,29 @@ export const ChatView: React.FC = () => {
     setIsLoading(true);
 
     const history = messages.map(m => ({ role: m.role, content: m.content }));
-    const coachText = await getCoachResponse(input, history);
 
-    const coachMsg: ChatMessage = {
-      id: (Date.now() + 1).toString(),
-      role: 'assistant',
-      content: coachText,
-      timestamp: new Date()
-    };
+    try {
+      const coachText = await getCoachResponse(input, history);
 
-    setMessages(prev => [...prev, coachMsg]);
-    setIsLoading(false);
+      const coachMsg: ChatMessage = {
+        id: (Date.now() + 1).toString(),
+        role: 'assistant',
+        content: coachText,
+        timestamp: new Date()
+      };
+
+      setMessages(prev => [...prev, coachMsg]);
+    } catch (error) {
+      const errorMsg: ChatMessage = {
+        id: (Date.now() + 1).toString(),
+        role: 'assistant',
+        content: "I'm having trouble connecting. Make sure summit-ai is running on localhost:8000.",
+        timestamp: new Date()
+      };
+      setMessages(prev => [...prev, errorMsg]);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
