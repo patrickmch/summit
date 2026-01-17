@@ -2,9 +2,11 @@
 import React from 'react';
 import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { TrainingLogProvider } from './contexts/TrainingLogContext';
 import { Layout } from './components/Layout';
 import { LandingPage } from './views/LandingPage';
 import { Onboarding } from './views/Onboarding';
+import { PlanReview } from './views/PlanReview';
 import { Dashboard } from './views/Dashboard';
 import { ChatView } from './views/ChatView';
 import { ProgressView } from './views/ProgressView';
@@ -63,9 +65,9 @@ const SettingsPlaceholder = () => {
   );
 };
 
-// Protected route wrapper
+// Protected route wrapper - requires auth + onboarding + plan accepted
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { isAuthenticated, hasCompletedOnboarding } = useAuth();
+  const { isAuthenticated, hasCompletedOnboarding, hasAcceptedPlan } = useAuth();
 
   if (!isAuthenticated) {
     return <Navigate to="/landing" replace />;
@@ -75,30 +77,61 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
     return <Navigate to="/onboarding" replace />;
   }
 
+  if (!hasAcceptedPlan) {
+    return <Navigate to="/plan-review" replace />;
+  }
+
   return <>{children}</>;
 };
 
 // Route that requires auth but not onboarding (for onboarding flow itself)
 const OnboardingRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { isAuthenticated, hasCompletedOnboarding } = useAuth();
+  const { isAuthenticated, hasCompletedOnboarding, hasAcceptedPlan } = useAuth();
 
   if (!isAuthenticated) {
     return <Navigate to="/landing" replace />;
   }
 
-  if (hasCompletedOnboarding) {
+  if (hasCompletedOnboarding && hasAcceptedPlan) {
+    return <Navigate to="/" replace />;
+  }
+
+  if (hasCompletedOnboarding && !hasAcceptedPlan) {
+    return <Navigate to="/plan-review" replace />;
+  }
+
+  return <>{children}</>;
+};
+
+// Route for plan review - requires onboarding but not plan acceptance
+const PlanReviewRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { isAuthenticated, hasCompletedOnboarding, hasAcceptedPlan } = useAuth();
+
+  if (!isAuthenticated) {
+    return <Navigate to="/landing" replace />;
+  }
+
+  if (!hasCompletedOnboarding) {
+    return <Navigate to="/onboarding" replace />;
+  }
+
+  if (hasAcceptedPlan) {
     return <Navigate to="/" replace />;
   }
 
   return <>{children}</>;
 };
 
-// Public route - redirect to dashboard if already authenticated
+// Public route - redirect based on auth state
 const PublicRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { isAuthenticated, hasCompletedOnboarding } = useAuth();
+  const { isAuthenticated, hasCompletedOnboarding, hasAcceptedPlan } = useAuth();
 
-  if (isAuthenticated && hasCompletedOnboarding) {
+  if (isAuthenticated && hasCompletedOnboarding && hasAcceptedPlan) {
     return <Navigate to="/" replace />;
+  }
+
+  if (isAuthenticated && hasCompletedOnboarding && !hasAcceptedPlan) {
+    return <Navigate to="/plan-review" replace />;
   }
 
   if (isAuthenticated && !hasCompletedOnboarding) {
@@ -131,7 +164,17 @@ const AppRoutes: React.FC = () => {
         }
       />
 
-      {/* Protected routes - requires auth + onboarding complete */}
+      {/* Plan Review - requires onboarding but not plan acceptance */}
+      <Route
+        path="/plan-review"
+        element={
+          <PlanReviewRoute>
+            <PlanReview />
+          </PlanReviewRoute>
+        }
+      />
+
+      {/* Protected routes - requires auth + onboarding + plan accepted */}
       <Route
         path="/"
         element={
@@ -193,7 +236,9 @@ const App: React.FC = () => {
   return (
     <HashRouter>
       <AuthProvider>
-        <AppRoutes />
+        <TrainingLogProvider>
+          <AppRoutes />
+        </TrainingLogProvider>
       </AuthProvider>
     </HashRouter>
   );

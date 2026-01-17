@@ -1,10 +1,18 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { UserProfile } from '../types';
+import { UserProfile, StructuredPlan } from '../types';
+
+export interface TrainingPlan {
+  structured: StructuredPlan;
+  generatedAt: Date;
+  planStartDate: Date; // Monday of Week 1
+}
 
 interface AuthState {
   isAuthenticated: boolean;
   hasCompletedOnboarding: boolean;
+  hasAcceptedPlan: boolean;
   user: Partial<UserProfile> | null;
+  currentPlan: TrainingPlan | null;
 }
 
 interface AuthContextType extends AuthState {
@@ -12,6 +20,7 @@ interface AuthContextType extends AuthState {
   signIn: (email: string) => void;
   signOut: () => void;
   completeOnboarding: (profile: Partial<UserProfile>) => void;
+  acceptPlan: (plan: TrainingPlan) => void;
 }
 
 const AUTH_STORAGE_KEY = 'summit_auth';
@@ -19,7 +28,9 @@ const AUTH_STORAGE_KEY = 'summit_auth';
 const defaultState: AuthState = {
   isAuthenticated: false,
   hasCompletedOnboarding: false,
+  hasAcceptedPlan: false,
   user: null,
+  currentPlan: null,
 };
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -47,7 +58,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setState({
       isAuthenticated: true,
       hasCompletedOnboarding: false,
+      hasAcceptedPlan: false,
       user: { email },
+      currentPlan: null,
     });
   };
 
@@ -74,6 +87,14 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }));
   };
 
+  const acceptPlan = (plan: TrainingPlan) => {
+    setState(prev => ({
+      ...prev,
+      hasAcceptedPlan: true,
+      currentPlan: plan,
+    }));
+  };
+
   return (
     <AuthContext.Provider
       value={{
@@ -82,6 +103,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         signIn,
         signOut,
         completeOnboarding,
+        acceptPlan,
       }}
     >
       {children}

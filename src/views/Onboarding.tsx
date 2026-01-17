@@ -95,7 +95,7 @@ export const Onboarding: React.FC = () => {
     if (step > 0) setStep(prev => prev - 1);
   };
 
-  // Building step - redirect after animation
+  // Building step - save data and redirect to plan review
   useEffect(() => {
     if (step === 5) {
       const timer = setTimeout(() => {
@@ -113,8 +113,9 @@ export const Onboarding: React.FC = () => {
           daysPerWeek: data.daysPerWeek,
           hoursPerWeek: data.hoursPerWeek,
         });
-        navigate('/');
-      }, 3500);
+        // Navigate to plan review instead of dashboard
+        navigate('/plan-review');
+      }, 2000); // Shorter delay since real work happens on plan review screen
       return () => clearTimeout(timer);
     }
   }, [step, navigate, data, completeOnboarding]);
