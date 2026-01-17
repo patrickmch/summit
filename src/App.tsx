@@ -11,6 +11,7 @@ import { Dashboard } from './views/Dashboard';
 import { ChatView } from './views/ChatView';
 import { ProgressView } from './views/ProgressView';
 import { DevLogin } from './views/DevLogin';
+import { Mountain } from 'lucide-react';
 
 // Simple placeholder views
 const PlanPlaceholder = () => (
@@ -66,9 +67,25 @@ const SettingsPlaceholder = () => {
   );
 };
 
+// Loading spinner for auth initialization
+const AuthLoadingScreen: React.FC = () => (
+  <div className="min-h-screen bg-[#1a1a1a] flex items-center justify-center">
+    <div className="flex flex-col items-center space-y-6">
+      <div className="relative w-24 h-24">
+        <div className="absolute inset-0 border-4 border-amber-600/20 rounded-full" />
+        <div className="absolute inset-0 border-4 border-amber-600 border-t-transparent rounded-full animate-spin" />
+        <Mountain className="absolute inset-0 m-auto text-amber-500" size={32} />
+      </div>
+      <p className="text-[#737373] text-sm">Loading...</p>
+    </div>
+  </div>
+);
+
 // Protected route wrapper - requires auth + onboarding + plan accepted
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { isAuthenticated, hasCompletedOnboarding, hasAcceptedPlan } = useAuth();
+  const { isAuthenticated, hasCompletedOnboarding, hasAcceptedPlan, isLoading } = useAuth();
+
+  if (isLoading) return <AuthLoadingScreen />;
 
   if (!isAuthenticated) {
     return <Navigate to="/landing" replace />;
@@ -87,7 +104,9 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
 
 // Route that requires auth but not onboarding (for onboarding flow itself)
 const OnboardingRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { isAuthenticated, hasCompletedOnboarding, hasAcceptedPlan } = useAuth();
+  const { isAuthenticated, hasCompletedOnboarding, hasAcceptedPlan, isLoading } = useAuth();
+
+  if (isLoading) return <AuthLoadingScreen />;
 
   if (!isAuthenticated) {
     return <Navigate to="/landing" replace />;
@@ -106,7 +125,9 @@ const OnboardingRoute: React.FC<{ children: React.ReactNode }> = ({ children }) 
 
 // Route for plan review - requires onboarding but not plan acceptance
 const PlanReviewRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { isAuthenticated, hasCompletedOnboarding, hasAcceptedPlan } = useAuth();
+  const { isAuthenticated, hasCompletedOnboarding, hasAcceptedPlan, isLoading } = useAuth();
+
+  if (isLoading) return <AuthLoadingScreen />;
 
   if (!isAuthenticated) {
     return <Navigate to="/landing" replace />;
@@ -125,7 +146,9 @@ const PlanReviewRoute: React.FC<{ children: React.ReactNode }> = ({ children }) 
 
 // Public route - redirect based on auth state
 const PublicRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { isAuthenticated, hasCompletedOnboarding, hasAcceptedPlan } = useAuth();
+  const { isAuthenticated, hasCompletedOnboarding, hasAcceptedPlan, isLoading } = useAuth();
+
+  if (isLoading) return <AuthLoadingScreen />;
 
   if (isAuthenticated && hasCompletedOnboarding && hasAcceptedPlan) {
     return <Navigate to="/" replace />;

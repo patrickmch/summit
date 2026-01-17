@@ -306,6 +306,63 @@ export const PlanReview: React.FC = () => {
                 </div>
               </div>
             )}
+
+            {/* Hour Progression Chart */}
+            {structuredPlan && (
+              <div className="mt-6 p-6 bg-[#262626] rounded-xl border border-white/5">
+                <h3 className="text-sm font-bold uppercase tracking-widest text-amber-500 mb-4">Volume Progression</h3>
+                <div className="space-y-3">
+                  {/* Find max hours for scaling */}
+                  {(() => {
+                    const maxHours = Math.max(...structuredPlan.weeks.map(w => w.targetHours || 0));
+                    const phases = structuredPlan.phases;
+
+                    return structuredPlan.weeks.map((week) => {
+                      const phase = phases.find(p => week.weekNumber >= p.weekStart && week.weekNumber <= p.weekEnd);
+                      const widthPercent = maxHours > 0 ? (week.targetHours / maxHours) * 100 : 0;
+                      const isPhaseStart = phase?.weekStart === week.weekNumber;
+
+                      return (
+                        <div key={week.weekNumber} className="flex items-center gap-3">
+                          <div className="w-8 text-xs text-[#525252] text-right">{week.weekNumber}</div>
+                          <div className="flex-1 h-6 bg-[#1a1a1a] rounded overflow-hidden relative">
+                            <div
+                              className={`h-full rounded transition-all ${
+                                phase?.name === 'Base Building' ? 'bg-green-600/60' :
+                                phase?.name === 'Build' ? 'bg-amber-600/60' :
+                                'bg-red-600/60'
+                              }`}
+                              style={{ width: `${widthPercent}%` }}
+                            />
+                            {isPhaseStart && (
+                              <div className="absolute inset-y-0 left-2 flex items-center">
+                                <span className="text-[10px] font-bold text-white/80">
+                                  {phase?.name === 'Base Building' ? 'BASE' : phase?.name === 'Build' ? 'BUILD' : 'PEAK'}
+                                </span>
+                              </div>
+                            )}
+                          </div>
+                          <div className="w-12 text-xs text-[#737373] text-right">
+                            {week.targetHours}h
+                          </div>
+                        </div>
+                      );
+                    });
+                  })()}
+                </div>
+                <div className="flex justify-between mt-4 pt-4 border-t border-white/5">
+                  <div className="flex items-center gap-2 text-xs text-[#525252]">
+                    <div className="w-3 h-3 rounded bg-green-600/60" /> Base
+                  </div>
+                  <div className="flex items-center gap-2 text-xs text-[#525252]">
+                    <div className="w-3 h-3 rounded bg-amber-600/60" /> Build
+                  </div>
+                  <div className="flex items-center gap-2 text-xs text-[#525252]">
+                    <div className="w-3 h-3 rounded bg-red-600/60" /> Peak/Taper
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </div>
 

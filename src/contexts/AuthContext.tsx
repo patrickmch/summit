@@ -1,5 +1,8 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
+import { User } from '@supabase/supabase-js';
+import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import { UserProfile, StructuredPlan } from '../types';
+import type { Profile, Plan } from '../lib/database.types';
 
 export interface TrainingPlan {
   structured: StructuredPlan;
@@ -13,15 +16,22 @@ interface AuthState {
   hasAcceptedPlan: boolean;
   user: Partial<UserProfile> | null;
   currentPlan: TrainingPlan | null;
+  isLoading: boolean; // New: for async auth operations
+  supabaseUser: User | null; // The raw Supabase auth user
 }
 
 interface AuthContextType extends AuthState {
+  // Auth methods
+  signInWithGoogle: () => Promise<void>;
+  signInWithMagicLink: (email: string) => Promise<{ error: Error | null }>;
+  signOut: () => Promise<void>;
+  // Legacy methods (localStorage fallback)
   signUp: (email: string) => void;
   signIn: (email: string) => void;
-  signOut: () => void;
+  // Profile & plan methods
   completeOnboarding: (profile: Partial<UserProfile>) => void;
   acceptPlan: (plan: TrainingPlan) => void;
-  devLogin: () => void; // Skip straight to plan review with test profile
+  devLogin: () => void;
 }
 
 const AUTH_STORAGE_KEY = 'summit_auth';
@@ -32,6 +42,8 @@ const defaultState: AuthState = {
   hasAcceptedPlan: false,
   user: null,
   currentPlan: null,
+  isLoading: true,
+  supabaseUser: null,
 };
 
 // Dev seed profile for rapid testing
@@ -60,13 +72,58 @@ const DEV_PROFILE: Partial<UserProfile> = {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+// Convert Supabase profile row to UserProfile
+const profileRowToUserProfile = (row: Profile, email?: string): Partial<UserProfile> => ({
+  email,
+  primaryGoal: row.goal_text || undefined,
+  athleticHistory: row.recent_activity || undefined,
+  sports: row.disciplines as UserProfile['sports'],
+  hoursPerWeek: row.hours_per_week || undefined,
+  daysPerWeek: row.days_per_week || undefined,
+  equipment: row.equipment,
+  experienceLevel: row.fitness_level === 'beginner' ? 'Beginner'
+    : row.fitness_level === 'intermediate' ? 'Intermediate'
+    : row.fitness_level === 'advanced' ? 'Advanced'
+    : row.fitness_level === 'elite' ? 'Elite'
+    : undefined,
+});
+
+// Convert UserProfile to Supabase profile insert
+const userProfileToInsert = (profile: Partial<UserProfile>, userId: string) => ({
+  user_id: userId,
+  disciplines: profile.sports || [],
+  goal_text: profile.primaryGoal || null,
+  goal_date: profile.targetDate || null,
+  hours_per_week: profile.hoursPerWeek || null,
+  days_per_week: profile.daysPerWeek || null,
+  equipment: profile.equipment || [],
+  fitness_level: profile.experienceLevel?.toLowerCase() as Profile['fitness_level'] || null,
+  recent_activity: profile.athleticHistory || null,
+  injuries: null,
+  onboarding_completed_at: new Date().toISOString(),
+});
+
+// Convert UserProfile to Supabase profile update
+const userProfileToUpdate = (profile: Partial<UserProfile>) => ({
+  disciplines: profile.sports || [],
+  goal_text: profile.primaryGoal || null,
+  goal_date: profile.targetDate || null,
+  hours_per_week: profile.hoursPerWeek || null,
+  days_per_week: profile.daysPerWeek || null,
+  equipment: profile.equipment || [],
+  fitness_level: profile.experienceLevel?.toLowerCase() as Profile['fitness_level'] || null,
+  recent_activity: profile.athleticHistory || null,
+  onboarding_completed_at: new Date().toISOString(),
+});
+
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [state, setState] = useState<AuthState>(() => {
-    // Load from localStorage on init
+    // Load from localStorage on init (for non-Supabase mode or cached state)
     const stored = localStorage.getItem(AUTH_STORAGE_KEY);
     if (stored) {
       try {
-        return JSON.parse(stored);
+        const parsed = JSON.parse(stored);
+        return { ...parsed, isLoading: isSupabaseConfigured(), supabaseUser: null };
       } catch {
         return defaultState;
       }
@@ -74,11 +131,145 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     return defaultState;
   });
 
-  // Persist to localStorage on changes
+  // Load profile from Supabase
+  const loadSupabaseProfile = useCallback(async (user: User) => {
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('user_id', user.id)
+      .single();
+
+    // Load active training plan
+    const { data: planRow } = await supabase
+      .from('plans')
+      .select('*')
+      .eq('user_id', user.id)
+      .eq('status', 'active')
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .single();
+
+    const userProfile = profile
+      ? profileRowToUserProfile(profile, user.email)
+      : { email: user.email };
+
+    const hasProfile = profile && profile.onboarding_completed_at;
+
+    let trainingPlan: TrainingPlan | null = null;
+    if (planRow) {
+      trainingPlan = {
+        structured: planRow.blocks as unknown as StructuredPlan,
+        generatedAt: new Date(planRow.created_at),
+        planStartDate: new Date(planRow.started_at),
+      };
+    }
+
+    setState({
+      isAuthenticated: true,
+      hasCompletedOnboarding: Boolean(hasProfile),
+      hasAcceptedPlan: Boolean(planRow),
+      user: userProfile,
+      currentPlan: trainingPlan,
+      isLoading: false,
+      supabaseUser: user,
+    });
+  }, []);
+
+  // Supabase auth listener
   useEffect(() => {
-    localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(state));
+    if (!isSupabaseConfigured()) {
+      setState(prev => ({ ...prev, isLoading: false }));
+      return;
+    }
+
+    // Check initial session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) {
+        loadSupabaseProfile(session.user);
+      } else {
+        setState(prev => ({ ...prev, isLoading: false }));
+      }
+    });
+
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        if (event === 'SIGNED_IN' && session?.user) {
+          await loadSupabaseProfile(session.user);
+        } else if (event === 'SIGNED_OUT') {
+          setState({
+            ...defaultState,
+            isLoading: false,
+          });
+          localStorage.removeItem(AUTH_STORAGE_KEY);
+        }
+      }
+    );
+
+    return () => subscription.unsubscribe();
+  }, [loadSupabaseProfile]);
+
+  // Persist to localStorage (for non-Supabase mode and cache)
+  useEffect(() => {
+    if (!state.isLoading) {
+      const toStore = {
+        isAuthenticated: state.isAuthenticated,
+        hasCompletedOnboarding: state.hasCompletedOnboarding,
+        hasAcceptedPlan: state.hasAcceptedPlan,
+        user: state.user,
+        currentPlan: state.currentPlan,
+      };
+      localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(toStore));
+    }
   }, [state]);
 
+  // ========== Auth Methods ==========
+
+  const signInWithGoogle = async () => {
+    if (!isSupabaseConfigured()) {
+      console.warn('Supabase not configured, using localStorage auth');
+      return;
+    }
+
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: `${window.location.origin}/`,
+      },
+    });
+
+    if (error) {
+      console.error('Google sign-in error:', error);
+      throw error;
+    }
+  };
+
+  const signInWithMagicLink = async (email: string): Promise<{ error: Error | null }> => {
+    if (!isSupabaseConfigured()) {
+      // Fallback to localStorage mode
+      signUp(email);
+      return { error: null };
+    }
+
+    const { error } = await supabase.auth.signInWithOtp({
+      email,
+      options: {
+        emailRedirectTo: `${window.location.origin}/`,
+      },
+    });
+
+    return { error: error as Error | null };
+  };
+
+  const signOut = async () => {
+    if (isSupabaseConfigured()) {
+      await supabase.auth.signOut();
+    }
+    setState({ ...defaultState, isLoading: false });
+    localStorage.removeItem(AUTH_STORAGE_KEY);
+  };
+
+  // Legacy localStorage auth (fallback when Supabase not configured)
   const signUp = (email: string) => {
     setState({
       isAuthenticated: true,
@@ -86,33 +277,86 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       hasAcceptedPlan: false,
       user: { email },
       currentPlan: null,
+      isLoading: false,
+      supabaseUser: null,
     });
   };
 
   const signIn = (email: string) => {
-    // For demo, just set authenticated
-    // In real app, would validate credentials
     setState(prev => ({
       ...prev,
       isAuthenticated: true,
       user: { ...prev.user, email },
+      isLoading: false,
     }));
   };
 
-  const signOut = () => {
-    setState(defaultState);
-    localStorage.removeItem(AUTH_STORAGE_KEY);
-  };
+  // ========== Profile & Plan Methods ==========
 
-  const completeOnboarding = (profile: Partial<UserProfile>) => {
+  const completeOnboarding = async (profile: Partial<UserProfile>) => {
+    const newUser = { ...state.user, ...profile };
+
+    // Save to Supabase if configured
+    if (isSupabaseConfigured() && state.supabaseUser) {
+      // Check if profile exists
+      const { data: existing } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('user_id', state.supabaseUser.id)
+        .single();
+
+      if (existing) {
+        // Update existing profile
+        await supabase
+          .from('profiles')
+          .update(userProfileToUpdate(newUser))
+          .eq('user_id', state.supabaseUser.id);
+      } else {
+        // Insert new profile
+        await supabase
+          .from('profiles')
+          .insert(userProfileToInsert(newUser, state.supabaseUser.id));
+      }
+    }
+
     setState(prev => ({
       ...prev,
       hasCompletedOnboarding: true,
-      user: { ...prev.user, ...profile },
+      user: newUser,
     }));
   };
 
-  const acceptPlan = (plan: TrainingPlan) => {
+  const acceptPlan = async (plan: TrainingPlan) => {
+    // Save to Supabase if configured
+    if (isSupabaseConfigured() && state.supabaseUser) {
+      // Mark any existing active plans as abandoned
+      await supabase
+        .from('plans')
+        .update({ status: 'abandoned' })
+        .eq('user_id', state.supabaseUser.id)
+        .eq('status', 'active');
+
+      // Infer discipline from sports
+      const discipline = state.user?.sports?.[0] || 'General Fitness';
+
+      // Insert new plan
+      await supabase
+        .from('plans')
+        .insert({
+          user_id: state.supabaseUser.id,
+          name: `${discipline} Plan`,
+          discipline,
+          goal: state.user?.primaryGoal || 'Training Plan',
+          target_date: state.user?.targetDate || null,
+          blocks: plan.structured as any,
+          duration_weeks: plan.structured.weeks.length,
+          weekly_hours: state.user?.hoursPerWeek || null,
+          periodization_type: 'block',
+          status: 'active',
+          started_at: plan.planStartDate.toISOString(),
+        });
+    }
+
     setState(prev => ({
       ...prev,
       hasAcceptedPlan: true,
@@ -120,14 +364,16 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }));
   };
 
-  // Dev login: skip onboarding with pre-filled profile, go to plan review
+  // Dev login: skip onboarding with pre-filled profile
   const devLogin = () => {
     setState({
       isAuthenticated: true,
       hasCompletedOnboarding: true,
-      hasAcceptedPlan: false, // Go to plan review, not dashboard
+      hasAcceptedPlan: false,
       user: DEV_PROFILE,
       currentPlan: null,
+      isLoading: false,
+      supabaseUser: null,
     });
   };
 
@@ -135,9 +381,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     <AuthContext.Provider
       value={{
         ...state,
+        signInWithGoogle,
+        signInWithMagicLink,
+        signOut,
         signUp,
         signIn,
-        signOut,
         completeOnboarding,
         acceptPlan,
         devLogin,

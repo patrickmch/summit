@@ -195,7 +195,7 @@ npm run build
 
 - [x] Vite + React SPA frontend
 - [x] Authentication flow (signup + protected routes)
-- [x] Onboarding flow (6 steps)
+- [x] Onboarding flow (simplified to 4 steps: Objective → Background → Stats → Availability)
 - [x] Plan review screen (AI-generated plan + chat for modifications)
 - [x] AI coach chat via summit-ai (RAG-enhanced)
 - [x] Progress visualization
@@ -206,11 +206,16 @@ npm run build
 - [x] **Markdown rendering fixed** (@tailwindcss/typography installed)
 - [x] **Streaming chat responses** (SSE for faster perceived response time)
 - [x] **Smart plan updates** (detect change requests, regenerate plan)
+- [x] **Dev login** (`/dev` route to skip onboarding with test profile)
+- [x] **Progressive periodization** (hours ramp from 50% to 100% over plan duration)
+- [x] **Supabase auth integration** (Google OAuth + magic link, localStorage fallback)
+- [x] **Supabase persistence** (profiles + training_plans tables, syncs on save)
 
 ## What's Next
 
-- [ ] Connect to Supabase for real auth and data persistence
+- [ ] Create Supabase tables (profiles, training_plans, workout_logs)
 - [ ] Build out Plan calendar view (full weeks visible)
+- [ ] Improve workout logging UX
 - [ ] Add biometric data integration (Strava, etc.)
 - [ ] Deploy summit-ai to Railway
 
@@ -218,25 +223,32 @@ npm run build
 
 ## Session Context
 
-Last updated: 2026-01-16
+Last updated: 2026-01-17
 
 ### Files Modified This Session
-- `src/services/summitAiService.ts`:
-  - Added `chatAboutPlanStream()` - SSE streaming for chat
-  - Added `regeneratePlanWithChanges()` - regenerate plan with modifications
-  - Added `calculateWeeksUntilTarget()` - dynamic week count from target date
-  - Fixed phase week calculations to be dynamic instead of hardcoded
-  - Fixed coach notes to be phase-aware
-- `src/views/PlanReview.tsx` - Streaming state, async generator consumption, update confirmation UI
+- `src/contexts/AuthContext.tsx`:
+  - Integrated Supabase auth (Google OAuth + magic link)
+  - Added `onAuthStateChange` listener
+  - Profile/plan sync to Supabase tables
+  - localStorage fallback when Supabase not configured
+- `src/views/LandingPage.tsx`:
+  - Google OAuth button
+  - Magic link email flow with "check your email" state
+  - Progressive enhancement (shows Google when Supabase configured)
+- `src/lib/supabase.ts` - Supabase client setup
+- `src/lib/database.types.ts` - TypeScript types for Supabase tables
+- `src/App.tsx` - Loading state while auth initializes
+- `.env.example` - Updated to use VITE_ prefix (was NEXT_PUBLIC_)
 
 ### Key Decisions
 - **JSON + Markdown hybrid**: AI returns structured JSON with markdown summary for display
 - **Week start**: Monday (dayOfWeek: 1=Mon, 2=Tue, ... 0=Sun)
 - **Week calculation**: `Math.floor(daysSincePlanStart / 7) + 1` from planStartDate
 - **Plan duration**: Calculated from target date (4-24 weeks), defaults to 8 if no target
-- **Storage**: localStorage initially (can migrate to Supabase later)
+- **Storage**: Supabase when configured, localStorage fallback for offline/dev
 - **Review trigger**: Time-based check on app load (Sunday, 24hrs before Monday)
 - **Streaming**: SSE with async generator pattern for clean consumption
 - **Change detection**: Heuristic pattern matching (fast, no extra API call)
 - **Plan update**: Full regeneration via backend (returns original if backend unavailable)
 - **UX**: Streaming cursor + bottom confirmation banner (non-intrusive)
+- **Auth**: Supabase handles auth state, profiles table for custom fields
