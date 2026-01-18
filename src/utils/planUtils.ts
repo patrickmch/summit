@@ -1,5 +1,5 @@
 import { differenceInDays, startOfDay, getDay, nextMonday, addDays, isBefore, isAfter, isSameDay } from 'date-fns';
-import { WeekPlan, PlannedWorkout, WorkoutLog } from '../types';
+import { WeekPlan, PlannedWorkout, WorkoutLog, Phase, StructuredPlan } from '../types';
 
 /**
  * Calculate the current week number based on plan start date.
@@ -146,4 +146,35 @@ export function canLogWorkout(planStartDate: Date, weekNumber: number, dayOfWeek
 
   // Can log if the workout date is today or in the past
   return !isAfter(workoutDate, today);
+}
+
+/**
+ * Get the phase info for a specific week number.
+ */
+export function getPhaseForWeek(plan: StructuredPlan, weekNumber: number): Phase | null {
+  return plan.phases.find(p => weekNumber >= p.weekStart && weekNumber <= p.weekEnd) || null;
+}
+
+/**
+ * Check if the given week number is the current week.
+ */
+export function isCurrentWeek(planStartDate: Date, weekNumber: number): boolean {
+  const currentWeek = getCurrentWeek(planStartDate);
+  return currentWeek === weekNumber;
+}
+
+/**
+ * Check if the given week number is in the past.
+ */
+export function isPastWeek(planStartDate: Date, weekNumber: number): boolean {
+  const currentWeek = getCurrentWeek(planStartDate);
+  return weekNumber < currentWeek;
+}
+
+/**
+ * Check if the given week number is in the future.
+ */
+export function isFutureWeek(planStartDate: Date, weekNumber: number): boolean {
+  const currentWeek = getCurrentWeek(planStartDate);
+  return weekNumber > currentWeek;
 }

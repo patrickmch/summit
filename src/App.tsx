@@ -10,20 +10,11 @@ import { PlanReview } from './views/PlanReview';
 import { Dashboard } from './views/Dashboard';
 import { ChatView } from './views/ChatView';
 import { ProgressView } from './views/ProgressView';
+import { PlanView } from './views/PlanView';
 import { DevLogin } from './views/DevLogin';
 import { Mountain } from 'lucide-react';
 
-// Simple placeholder views
-const PlanPlaceholder = () => (
-  <div className="space-y-6">
-    <h1 className="text-4xl font-serif">Training Plan</h1>
-    <div className="bg-[#262626] p-20 rounded-2xl border border-white/5 text-center italic text-[#737373]">
-      Your full calendar view is being generated.
-      Check back shortly.
-    </div>
-  </div>
-);
-
+// Placeholder views
 const SettingsPlaceholder = () => {
   const { signOut, user } = useAuth();
 
@@ -234,7 +225,7 @@ const AppRoutes: React.FC = () => {
         element={
           <ProtectedRoute>
             <Layout>
-              <PlanPlaceholder />
+              <PlanView />
             </Layout>
           </ProtectedRoute>
         }

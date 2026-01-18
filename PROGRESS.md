@@ -38,10 +38,14 @@ summit/
 │   │   ├── Layout.tsx
 │   │   ├── MetricCard.tsx
 │   │   ├── WorkoutCard.tsx
-│   │   ├── WorkoutLogModal.tsx       # NEW - log workout completion
-│   │   ├── WeeklyReviewBanner.tsx    # NEW - weekly review prompt
-│   │   ├── WeeklyReviewModal.tsx     # NEW - collect week feedback
-│   │   └── AdjustmentReviewModal.tsx # NEW - show AI suggestions
+│   │   ├── WorkoutLogModal.tsx       # Log workout completion
+│   │   ├── WorkoutDetailModal.tsx    # NEW - full workout detail view
+│   │   ├── WeeklyReviewBanner.tsx    # Weekly review prompt
+│   │   ├── WeeklyReviewModal.tsx     # Collect week feedback
+│   │   ├── AdjustmentReviewModal.tsx # Show AI suggestions
+│   │   └── plan/                     # NEW - plan view components
+│   │       ├── DayCard.tsx           # NEW - day card with workout
+│   │       └── WeekSelector.tsx      # NEW - week navigation
 │   ├── contexts/
 │   │   ├── AuthContext.tsx           # Auth + plan storage
 │   │   └── TrainingLogContext.tsx    # NEW - workout logging
@@ -50,6 +54,7 @@ summit/
 │   │   ├── Onboarding.tsx
 │   │   ├── PlanReview.tsx  # Updated - structured plans
 │   │   ├── Dashboard.tsx   # Updated - real plan data
+│   │   ├── PlanView.tsx    # NEW - full weekly/daily plan viewer
 │   │   ├── ChatView.tsx
 │   │   └── ProgressView.tsx
 │   ├── services/
@@ -135,7 +140,7 @@ interface WorkoutLog {
 | `/` | Dashboard | Week view with real workouts, logging |
 | `/chat` | ChatView | AI coach conversation |
 | `/progress` | ProgressView | Training progress charts |
-| `/plan` | (placeholder) | Full training calendar |
+| `/plan` | PlanView | Full weekly/daily plan viewer |
 | `/settings` | (placeholder) | User settings |
 | `/dev` | DevLogin | Skip to plan review with test profile |
 | `/dev?dashboard` | DevLogin | Skip to dashboard with mock plan |
@@ -212,10 +217,10 @@ npm run build
 - [x] **Progressive periodization** (hours ramp from 50% to 100% over plan duration)
 - [x] **Supabase auth integration** (Google OAuth + magic link, localStorage fallback)
 - [x] **Supabase persistence** (profiles + training_plans tables, syncs on save)
+- [x] **Plan calendar view** (full weekly/daily viewer with week navigation)
 
 ## What's Next
 
-- [ ] Build out Plan calendar view (full weeks visible)
 - [ ] Improve workout logging UX
 - [ ] Add biometric data integration (Strava, etc.)
 - [ ] Deploy summit-ai to Railway
@@ -227,24 +232,12 @@ npm run build
 Last updated: 2026-01-18
 
 ### Files Modified This Session
-- `src/contexts/AuthContext.tsx`:
-  - Integrated Supabase auth (Google OAuth + magic link)
-  - Added `onAuthStateChange` listener
-  - Profile/plan sync to Supabase tables
-  - localStorage fallback when Supabase not configured
-- `src/views/LandingPage.tsx`:
-  - Google OAuth button
-  - Magic link email flow with "check your email" state
-  - Progressive enhancement (shows Google when Supabase configured)
-- `src/views/PlanReview.tsx`:
-  - Fixed plan re-generation bug (added ref to prevent duplicate fetches)
-  - Added hour progression chart
-- `src/views/DevLogin.tsx`:
-  - Added `?dashboard` query param to skip directly to dashboard with mock plan
-- `src/lib/supabase.ts` - Supabase client setup
-- `src/lib/database.types.ts` - TypeScript types matching existing Supabase schema
-- `src/App.tsx` - Loading state while auth initializes
-- `.env.example` - Updated to use VITE_ prefix (was NEXT_PUBLIC_)
+- `src/views/PlanView.tsx` - NEW: Full weekly/daily plan viewer
+- `src/components/WorkoutDetailModal.tsx` - NEW: Workout detail modal with blocks
+- `src/components/plan/DayCard.tsx` - NEW: Day card component
+- `src/components/plan/WeekSelector.tsx` - NEW: Week navigation component
+- `src/utils/planUtils.ts` - Added getPhaseForWeek, isCurrentWeek, isPastWeek, isFutureWeek
+- `src/App.tsx` - Replaced PlanPlaceholder with PlanView
 
 ### Key Decisions
 - **JSON + Markdown hybrid**: AI returns structured JSON with markdown summary for display
