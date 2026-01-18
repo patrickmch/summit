@@ -137,6 +137,8 @@ interface WorkoutLog {
 | `/progress` | ProgressView | Training progress charts |
 | `/plan` | (placeholder) | Full training calendar |
 | `/settings` | (placeholder) | User settings |
+| `/dev` | DevLogin | Skip to plan review with test profile |
+| `/dev?dashboard` | DevLogin | Skip to dashboard with mock plan |
 
 ## Tech Stack
 
@@ -213,7 +215,6 @@ npm run build
 
 ## What's Next
 
-- [ ] Create Supabase tables (profiles, training_plans, workout_logs)
 - [ ] Build out Plan calendar view (full weeks visible)
 - [ ] Improve workout logging UX
 - [ ] Add biometric data integration (Strava, etc.)
@@ -223,7 +224,7 @@ npm run build
 
 ## Session Context
 
-Last updated: 2026-01-17
+Last updated: 2026-01-18
 
 ### Files Modified This Session
 - `src/contexts/AuthContext.tsx`:
@@ -235,8 +236,13 @@ Last updated: 2026-01-17
   - Google OAuth button
   - Magic link email flow with "check your email" state
   - Progressive enhancement (shows Google when Supabase configured)
+- `src/views/PlanReview.tsx`:
+  - Fixed plan re-generation bug (added ref to prevent duplicate fetches)
+  - Added hour progression chart
+- `src/views/DevLogin.tsx`:
+  - Added `?dashboard` query param to skip directly to dashboard with mock plan
 - `src/lib/supabase.ts` - Supabase client setup
-- `src/lib/database.types.ts` - TypeScript types for Supabase tables
+- `src/lib/database.types.ts` - TypeScript types matching existing Supabase schema
 - `src/App.tsx` - Loading state while auth initializes
 - `.env.example` - Updated to use VITE_ prefix (was NEXT_PUBLIC_)
 
@@ -252,3 +258,4 @@ Last updated: 2026-01-17
 - **Plan update**: Full regeneration via backend (returns original if backend unavailable)
 - **UX**: Streaming cursor + bottom confirmation banner (non-intrusive)
 - **Auth**: Supabase handles auth state, profiles table for custom fields
+- **Dev routes**: `/dev` for plan review, `/dev?dashboard` for dashboard with mock plan

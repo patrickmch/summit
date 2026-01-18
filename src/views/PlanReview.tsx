@@ -31,8 +31,18 @@ export const PlanReview: React.FC = () => {
 
   const chatScrollRef = useRef<HTMLDivElement>(null);
 
-  // Generate structured plan on mount
+  // Generate structured plan on mount - only once
+  const hasGeneratedRef = useRef(false);
+
   useEffect(() => {
+    // Prevent re-generating if we already have a plan or already started generating
+    if (hasGeneratedRef.current || structuredPlan) {
+      setIsGenerating(false);
+      return;
+    }
+
+    hasGeneratedRef.current = true;
+
     const fetchPlan = async () => {
       try {
         const plan = await generateStructuredPlan(user || {});
@@ -54,7 +64,7 @@ export const PlanReview: React.FC = () => {
     };
 
     fetchPlan();
-  }, [user]);
+  }, [user, structuredPlan]);
 
   // Auto-scroll chat (including during streaming)
   useEffect(() => {
