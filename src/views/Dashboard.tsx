@@ -46,13 +46,19 @@ export const Dashboard: React.FC = () => {
       return null;
     }
 
-    const currentWeek = getCurrentWeek(new Date(currentPlan.planStartDate));
+    const planStartDate = new Date(currentPlan.planStartDate);
+    const rawCurrentWeek = getCurrentWeek(planStartDate);
+
+    // If plan hasn't started yet (week 0), show Week 1 as preview
+    const isPlanPreview = rawCurrentWeek === 0;
+    const currentWeek = isPlanPreview ? 1 : rawCurrentWeek;
+
     const weekPlan = currentPlan.structured.weeks.find(w => w.weekNumber === currentWeek);
-    const todayWorkout = weekPlan ? getTodayWorkout(weekPlan) : null;
+    const todayWorkout = isPlanPreview ? null : (weekPlan ? getTodayWorkout(weekPlan) : null);
     const weekLogs = getWeekLogs(currentWeek);
     const progress = weekPlan ? getWeekProgress(weekPlan, logs) : { completed: 0, total: 0, percentage: 0 };
     const showReview = shouldShowWeeklyReview(
-      new Date(currentPlan.planStartDate),
+      planStartDate,
       currentWeek,
       currentPlan.structured.totalWeeks
     );
@@ -64,8 +70,9 @@ export const Dashboard: React.FC = () => {
       weekLogs,
       progress,
       showReview,
-      planStartDate: new Date(currentPlan.planStartDate),
+      planStartDate,
       totalWeeks: currentPlan.structured.totalWeeks,
+      isPlanPreview, // New: indicates plan hasn't started yet
     };
   }, [currentPlan, logs, getWeekLogs]);
 
@@ -84,7 +91,7 @@ export const Dashboard: React.FC = () => {
     );
   }
 
-  const { currentWeek, weekPlan, todayWorkout, progress, showReview, planStartDate } = planState;
+  const { currentWeek, weekPlan, todayWorkout, progress, showReview, planStartDate, isPlanPreview } = planState;
   const weekDays = getWeekDays(planStartDate, currentWeek);
 
   const handleWorkoutClick = (workout: PlannedWorkout, canLog: boolean) => {
@@ -107,8 +114,14 @@ export const Dashboard: React.FC = () => {
           {getGreeting()}, {user?.name?.split(' ')[0] || 'Athlete'}.
         </h1>
         <p className="text-lg text-[#737373]">
-          Week {currentWeek} of {planState.totalWeeks} &middot; {weekPlan.phase} Phase
-          {progress.completed > 0 && ` · ${progress.completed}/${progress.total} complete`}
+          {isPlanPreview ? (
+            <>Your plan starts {format(planStartDate, 'EEEE, MMM d')} &middot; Here's Week 1 preview</>
+          ) : (
+            <>
+              Week {currentWeek} of {planState.totalWeeks} &middot; {weekPlan.phase} Phase
+              {progress.completed > 0 && ` · ${progress.completed}/${progress.total} complete`}
+            </>
+          )}
         </p>
       </section>
 
@@ -145,7 +158,17 @@ export const Dashboard: React.FC = () => {
             <h3 className="text-sm font-bold uppercase tracking-[0.2em] text-[#737373]">Today's Session</h3>
           </div>
 
-          {todayWorkout ? (
+          {isPlanPreview ? (
+            <div className="bg-gradient-to-br from-amber-600/10 to-amber-900/10 border border-amber-600/20 rounded-2xl p-8 text-center">
+              <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-amber-600/10 flex items-center justify-center">
+                <Clock className="text-amber-500" size={32} />
+              </div>
+              <h3 className="text-xl font-serif italic mb-2">Training Starts Soon</h3>
+              <p className="text-[#737373]">
+                Your plan begins {format(planStartDate, 'EEEE, MMMM d')}. Take a look at Week 1 on the right.
+              </p>
+            </div>
+          ) : todayWorkout ? (
             <div className="space-y-4">
               <WorkoutCard workout={toWorkout(todayWorkout, currentWeek, weekPlan.phase)} />
 
