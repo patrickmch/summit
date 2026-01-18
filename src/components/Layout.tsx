@@ -1,12 +1,45 @@
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useLocation, Link } from 'react-router-dom';
 import { Menu, X, Bell, User } from 'lucide-react';
 import { NAVIGATION, COLORS } from '../constants';
+import { useAuth } from '../contexts/AuthContext';
+import { getCurrentWeek, getPhaseForWeek } from '../utils/planUtils';
 
 export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const location = useLocation();
+  const { user, currentPlan } = useAuth();
+
+  // Compute user display info
+  const userName = user?.name || user?.email?.split('@')[0] || 'User';
+  const userInitials = userName
+    .split(' ')
+    .map(n => n[0])
+    .join('')
+    .toUpperCase()
+    .slice(0, 2);
+
+  // Compute current phase and week info
+  const phaseInfo = useMemo(() => {
+    if (!currentPlan?.structured || !currentPlan.planStartDate) {
+      return null;
+    }
+    const currentWeek = getCurrentWeek(currentPlan.planStartDate);
+    if (currentWeek === 0) {
+      return { phaseName: 'Plan starts soon', weekDisplay: '' };
+    }
+    const phase = getPhaseForWeek(currentPlan.structured, currentWeek);
+    if (!phase) {
+      return null;
+    }
+    const weekInPhase = currentWeek - phase.weekStart + 1;
+    const totalPhaseWeeks = phase.weekEnd - phase.weekStart + 1;
+    return {
+      phaseName: phase.name,
+      weekDisplay: `Week ${weekInPhase} of ${totalPhaseWeeks}`,
+    };
+  }, [currentPlan]);
 
   return (
     <div className="min-h-screen bg-[#1a1a1a] text-[#f5f2ed] flex">
@@ -55,11 +88,13 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
           <div className="mt-auto pt-6 border-t border-white/5">
             <div className="flex items-center gap-3 px-2">
               <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-[#d97706] to-[#f59e0b] flex items-center justify-center text-black font-bold">
-                JD
+                {userInitials}
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold truncate">Jane Doe</p>
-                <p className="text-xs text-[#737373] truncate">Base Building Phase</p>
+                <p className="text-sm font-semibold truncate">{userName}</p>
+                <p className="text-xs text-[#737373] truncate">
+                  {phaseInfo?.phaseName || 'No active plan'}
+                </p>
               </div>
             </div>
           </div>
@@ -79,7 +114,11 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
           
           <div className="hidden md:flex flex-col">
             <h2 className="text-sm font-bold uppercase tracking-widest text-[#737373]">Current Phase</h2>
-            <p className="text-lg font-serif">Base Building — Week 3 of 8</p>
+            <p className="text-lg font-serif">
+              {phaseInfo
+                ? `${phaseInfo.phaseName}${phaseInfo.weekDisplay ? ` — ${phaseInfo.weekDisplay}` : ''}`
+                : 'No active plan'}
+            </p>
           </div>
 
           <div className="flex items-center gap-4">
