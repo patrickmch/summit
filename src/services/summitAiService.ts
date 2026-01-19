@@ -496,14 +496,40 @@ function getMockStructuredPlan(profile: Partial<UserProfile>): StructuredPlan {
   ];
 
   /**
+   * Check if a week is a deload/recovery week.
+   * Uses 3:1 pattern (3 weeks build, 1 week recovery) which is standard
+   * in endurance training per Uphill Athlete methodology.
+   */
+  const isDeloadWeek = (weekNum: number): boolean => {
+    // Every 4th week is a deload (weeks 4, 8, 12, 16, etc.)
+    // Exception: don't deload in final 2 weeks (that's taper territory)
+    if (weekNum >= totalWeeks - 1) return false;
+    return weekNum % 4 === 0;
+  };
+
+  /**
    * Calculate target hours for a given week based on periodization principles.
-   * Hours ramp up progressively, not flat from day 1.
+   * Follows 3:1 loading pattern with deload weeks at ~50-60% volume.
    *
-   * Base phase: Start at 50%, build to 70% of max
-   * Build phase: 70% to 90% of max
+   * Base phase: Start at 50%, build to 70% of max (with deloads)
+   * Build phase: 70% to 90% of max (with deloads)
    * Peak phase: 85% of max, then taper to 50% in final week(s)
    */
   const calculateTargetHours = (weekNum: number, phase: Phase): number => {
+    // Deload weeks get 50-60% of what would have been prescribed
+    if (isDeloadWeek(weekNum)) {
+      // Calculate what week 3 of this mesocycle would have been
+      const prevWeekHours = calculateBaseHours(weekNum - 1, phase);
+      return Math.round(prevWeekHours * 0.55 * 10) / 10; // 55% for recovery
+    }
+
+    return calculateBaseHours(weekNum, phase);
+  };
+
+  /**
+   * Calculate base hours without deload adjustment (used for progression calc)
+   */
+  const calculateBaseHours = (weekNum: number, phase: Phase): number => {
     const phaseWeekNum = weekNum - phase.weekStart + 1;
     const phaseLength = phase.weekEnd - phase.weekStart + 1;
     const progressInPhase = phaseLength > 1 ? (phaseWeekNum - 1) / (phaseLength - 1) : 0;
@@ -609,8 +635,13 @@ function getMockStructuredPlan(profile: Partial<UserProfile>): StructuredPlan {
         ? [1, 2, 3, 5, 6] // Mon, Tue, Wed, Fri, Sat
         : [1, 2, 3, 4, 5, 6]; // Mon-Sat
 
-  // Generate dynamic coach notes based on phase
+  // Generate dynamic coach notes based on phase and deload status
   const getCoachNote = (week: number, phase: Phase): string => {
+    // Deload weeks get special messaging
+    if (isDeloadWeek(week)) {
+      return "Recovery week. Reduced volume allows adaptation from previous weeks. Keep intensity low, prioritize sleep and nutrition. This is where fitness gains are consolidated.";
+    }
+
     const phaseWeekNum = week - phase.weekStart + 1;
     const phaseLength = phase.weekEnd - phase.weekStart + 1;
     const isFirstWeek = phaseWeekNum === 1;
@@ -660,12 +691,14 @@ function getMockStructuredPlan(profile: Partial<UserProfile>): StructuredPlan {
       // Scale duration based on target hours (min 20 min, max 180 min)
       const scaledDuration = Math.max(20, Math.min(180, Math.round(template.durationMin * scaleFactor)));
 
-      // Increase intensity in later phases
+      // Adjust intensity based on phase and deload status
       let intensity = template.intensity;
-      if (phase.name === 'Build' && template.intensity === 'Low') {
+      if (isDeloadWeek(week)) {
+        // Deload weeks: keep all intensities low
+        intensity = 'Low';
+      } else if (phase.name === 'Build' && template.intensity === 'Low') {
         intensity = 'Moderate';
-      }
-      if (phase.name === 'Peak' && template.intensity === 'Moderate') {
+      } else if (phase.name === 'Peak' && template.intensity === 'Moderate') {
         intensity = 'High';
       }
 
@@ -692,9 +725,11 @@ function getMockStructuredPlan(profile: Partial<UserProfile>): StructuredPlan {
       });
     });
 
-    // Determine theme based on phase
+    // Determine theme based on phase and deload status
     let theme: string;
-    if (phase.name === 'Base Building') {
+    if (isDeloadWeek(week)) {
+      theme = 'Recovery';
+    } else if (phase.name === 'Base Building') {
       theme = 'Foundation';
     } else if (phase.name === 'Build') {
       theme = 'Development';
@@ -764,10 +799,11 @@ Fine-tune fitness, then reduce volume while maintaining intensity for your goal.
 
 ## Key Principles
 
-- **Progressive overload:** Hours ramp up week over week, not flat
+- **3:1 Loading Pattern:** Three weeks of progressive building followed by one recovery week (deload). This allows adaptation and prevents overtraining.
+- **Progressive overload:** Hours ramp up within each mesocycle, not monotonically
 - **Specificity:** Training matches your goal demands
-- **Recovery:** Adequate rest for adaptation
-- **Taper:** Reduce volume before your goal, maintain intensity
+- **Recovery:** Deload weeks at ~55% volume consolidate fitness gains
+- **Taper:** Final weeks reduce volume while maintaining intensity
 
 ---
 
